@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { ViewEngine, Module } from "types/types";
-import { initialize, generate } from "utils";
+import { initialize, generate } from "./utils";
 const program = new Command();
 
 initialize().then(answers => {
