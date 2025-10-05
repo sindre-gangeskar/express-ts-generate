@@ -13,6 +13,7 @@ export function generate(program: Command, appname: string, view: ViewEngine[ "v
     .option('-v, --view [view]', 'select view engine', view)
     .option('--git [git]', 'setup a .gitignore file', gitInit)
     .action(async (app, options) => {
+      if (app === "." || !app) app = path.basename(process.cwd());
       let flags: string = "";
       const entries = Object.entries(options);
 
