@@ -124,7 +124,9 @@ function convertToTypeScript(rootDir: string, module: Module, runtime: Runtime, 
   module === "esm" ? packageData.type = "module" : null;
   packageData.scripts.start = `${runtime === "node" ? `tsx ${hasSrc ? './src/bin/www/' : './bin/www'}` : `bun ${hasSrc ? './src/bin/www' : './bin/www'}`}`;
   packageData.scripts.dev = `${runtime === "node" ? `tsx watch ${hasSrc ? './src/bin/www' : './bin/www'}` : `bun ${hasSrc ? './src/bin/www' : './bin/www'} --watch`}`;
-  packageData.scripts.build = runtime === "node" ? `tsc && copyfiles -a ${hasSrc ? '-u 1 ./src' : '.'}/views/**/* ${hasSrc ? './src' : '.'}/public/**/* ${hasSrc ? './src' : '.'}/bin/**/* ./dist` : null;
+
+  if (runtime === "node")
+    packageData.scripts.build = `tsc && copyfiles -a ${hasSrc ? '-u 1 ./src' : '.'}/views/**/* ${hasSrc ? './src' : '.'}/public/**/* ${hasSrc ? './src' : '.'}/bin/**/* ./dist`;
 
   const editedJSON = JSON.stringify(packageData, null, 2);
   fs.writeFileSync(path.join(rootDir, 'package.json'), editedJSON);
@@ -139,10 +141,10 @@ function checkStatements(rootDir: string, module: Module) {
     const slicedData = refactored.split('\n');
 
     if (file.pathname !== `${rootDir}\\bin\\www`)
-      slicedData.splice(0, 0, "import { Request, Response, NextFunction } from 'express'")
+      slicedData.splice(0, 0, `import ${module === "commonjs" ? 'type' : ''} { Request, Response, NextFunction } from 'express'`)
 
     if (file.pathname === `${rootDir}\\app.ts`) {
-      slicedData.splice(1, 0, "import { HttpError } from 'http-errors'")
+      slicedData.splice(1, 0, `import ${module === "commonjs" ? 'type' : ''} { HttpError } from 'http-errors'`)
       slicedData.splice(7, 0, module === "esm" ? "import { fileURLToPath } from 'url'\nconst __filename = fileURLToPath(import.meta.url);\nconst __dirname = path.dirname(__filename);" : "");
     }
 

@@ -4,5 +4,8 @@
     "esModuleInterop": true,
     "moduleResolution": "nodenext",
     "module": "node20",
+    "rootDir": ".",
+    "outDir": "dist"
   },
+  
 }
