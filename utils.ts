@@ -33,7 +33,7 @@ export function generate(program: Command, appname: string, view: ViewEngine[ "v
         process.exit();
       }
 
-      const makeSrc = await confirm({ message: 'Make src folder? *recommended*', default: true });
+      const makeSrc = await confirm({ message: 'Make src folder? ** recommended **', default: true });
 
       const spinner = ora('Generating express project...').start()
       entries.forEach((entry) => {
@@ -103,6 +103,7 @@ function convertToTypeScript(rootDir: string, module: Module, runtime: Runtime, 
       resolveJsonModule: true,
       ...(module === "esm" ? { allowSyntheticDefaultImports: true } : null),
     },
+    include: [hasSrc ? 'src' : '.'],
     exclude: [ "node_modules", "dist" ]
   }
   const tsConfigJSON = JSON.stringify(tsConfig, null, 2);

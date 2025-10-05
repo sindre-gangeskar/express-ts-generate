@@ -3,9 +3,8 @@
     "baseUrl": ".",
     "esModuleInterop": true,
     "moduleResolution": "nodenext",
-    "module": "node20",
+    "module": "nodenext",
     "rootDir": ".",
     "outDir": "dist"
   },
-  
 }
