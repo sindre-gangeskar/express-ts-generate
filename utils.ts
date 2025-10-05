@@ -13,63 +13,67 @@ export function generate(program: Command, appname: string, view: ViewEngine[ "v
     .option('-v, --view [view]', 'select view engine', view)
     .option('--git [git]', 'setup a .gitignore file', gitInit)
     .action(async (app, options) => {
-      if (app === "." || !app) app = path.basename(process.cwd());
-      let flags: string = "";
-      const entries = Object.entries(options);
+      try {
+        if (app === "." || !app) app = './'
+        let flags: string = "";
+        const entries = Object.entries(options);
 
-      const exists = fs.existsSync(path.join(app));
-      let proceed = true;
-      let force = false;
+        const exists = fs.existsSync(path.join(app));
+        let proceed = true;
+        let force = false;
 
-      if (exists) {
-        const dir = fs.readdirSync(app, { recursive: true, encoding: 'utf-8' });
-        if (dir.length > 0) {
-          proceed = await confirm({ message: 'Directory is not empty.. proceed and force?' })
-          force = proceed;
+        if (exists) {
+          const dir = fs.readdirSync(app, { encoding: 'utf-8' });
+          if (dir.length > 0) {
+            proceed = await confirm({ message: 'Directory is not empty.. proceed and force?' })
+            force = proceed;
+          }
         }
-      }
 
-      if (!proceed) {
-        console.info('Exiting...');
-        process.exit();
-      }
+        if (!proceed) {
+          console.info('Exiting...');
+          process.exit();
+        }
 
-      const makeSrc = await confirm({ message: 'Make src folder? ** recommended **', default: true });
+        const makeSrc = await confirm({ message: 'Make src folder? ** recommended **', default: true });
 
-      const spinner = ora('Generating express project...').start()
-      entries.forEach((entry) => {
-        flags = flags.concat(`${typeof entry[ 1 ] !== "boolean" ? `--${entry[ 0 ]}` : typeof entry[ 1 ] === "boolean" && entry[ 1 ] ? `--${entry[ 0 ]}` : ""} ${typeof entry[ 1 ] !== "boolean" ? entry[ 1 ] : ""}`).trim().concat(' ');
-      })
-
-      const cd = `${app !== '.' ? `cd ${app}` : ''}`;
-      const extRuntime = runtime === "node" ? 'npx' : 'bunx';
-
-      execSync(`${extRuntime} express-generator@latest ${makeSrc ? app + '/src' : app} ${flags} ${force ? ' --force' : ''}`)
-      spinner.succeed('Generated base express project');
-
-      spinner.start('Converting to TypeScript...');
-      convertToTypeScript(app, module, runtime, makeSrc);
-
-      if (makeSrc) {
-        const filesToMove = [ 'package.json', 'tsconfig.json', '.gitignore' ];
-        filesToMove.forEach(file => {
-          fs.renameSync(path.join(app, 'src', file), path.join(app, file));
+        const spinner = ora('Generating express project...').start()
+        entries.forEach((entry) => {
+          flags = flags.concat(`${typeof entry[ 1 ] !== "boolean" ? `--${entry[ 0 ]}` : typeof entry[ 1 ] === "boolean" && entry[ 1 ] ? `--${entry[ 0 ]}` : ""} ${typeof entry[ 1 ] !== "boolean" ? entry[ 1 ] : ""}`).trim().concat(' ');
         })
+
+        const cd = `${app !== '.' ? `cd ${app}` : ''}`;
+        const extRuntime = runtime === "node" ? 'npx' : 'bunx';
+
+        execSync(`${extRuntime} express-generator@latest ${makeSrc ? app + '/src' : app} ${flags} ${force ? ' --force' : ''}`)
+        spinner.succeed('Generated base express project');
+
+        spinner.start('Converting to TypeScript...');
+        convertToTypeScript(app, module, runtime, makeSrc);
+
+        if (makeSrc) {
+          const filesToMove = [ 'package.json', 'tsconfig.json', '.gitignore' ];
+          filesToMove.forEach(file => {
+            fs.renameSync(path.join(app, 'src', file), path.join(app, file));
+          })
+        }
+
+        const rootDir = makeSrc ? path.join(app, 'src') : path.join(app);
+        checkStatements(rootDir, module);
+        spinner.succeed('Converted to TypeScript');
+
+        spinner.start('Installing dependencies and types...');
+        execSync(`${cd} && ${runtime === "node" ?
+          `npm install && npm install tsx typescript copyfiles @types/node @types/express @types/morgan @types/cookie-parser @types/debug --save-dev && ${forceAudit ? 'npm audit fix --force' : 'npm audit fix'}`
+          : `bun install @types/node @types/express @types/morgan @types/cookie-parser @types/debug --save-dev && bun update --latest ${forceAudit ? '--force' : ''}`}`)
+
+        spinner.succeed('Project is ready. Enjoy!');
+      } catch (error) {
+        throw error;
       }
-
-      const rootDir = makeSrc ? path.join(app, 'src') : path.join(app);
-      checkStatements(rootDir, module);
-      spinner.succeed('Converted to TypeScript');
-
-      spinner.start('Installing dependencies and types...');
-      execSync(`${cd} && ${runtime === "node" ?
-        `npm install && npm install tsx typescript copyfiles @types/node @types/express @types/morgan @types/cookie-parser @types/debug --save-dev && ${forceAudit ? 'npm audit fix --force' : 'npm audit fix'}`
-        : `bun install @types/node @types/express @types/morgan @types/cookie-parser @types/debug --save-dev && bun update --latest ${forceAudit ? '--force' : ''}`}`)
-
-      spinner.succeed('Project is ready. Enjoy!');
+      program.parse()
     })
 
-  program.parse()
 }
 export async function initialize() {
   try {
@@ -104,7 +108,7 @@ function convertToTypeScript(rootDir: string, module: Module, runtime: Runtime, 
       resolveJsonModule: true,
       ...(module === "esm" ? { allowSyntheticDefaultImports: true } : null),
     },
-    include: [hasSrc ? 'src' : '.'],
+    include: [ hasSrc ? 'src' : '.' ],
     exclude: [ "node_modules", "dist" ]
   }
   const tsConfigJSON = JSON.stringify(tsConfig, null, 2);
