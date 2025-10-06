@@ -1,6 +1,6 @@
 {
   "name": "express-ts-generate",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "main": "dist/index.js",
   "bin": {
     "express-ts-generate": "dist/index.js"
@@ -22,5 +22,5 @@
     "typescript": "^5.9.3"
   },
   "license": "MIT",
-  "keywords": ["express-generator", "typescript", "express"]
+  "keywords": ["express-generator", "typescript", "express", "generator", "ts"]
 }
