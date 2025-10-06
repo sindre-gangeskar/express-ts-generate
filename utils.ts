@@ -56,7 +56,7 @@ export function generate(program: Command, app: string, view: ViewEngine[ "value
         })
       }
 
-      const rootDir = makeSrc ? path.join(app, 'src') : path.join(app);
+      const rootDir = makeSrc ? path.join(app, 'src') : path.join(__dirname, app);
       checkStatements(rootDir, module);
       spinner.succeed('Converted to TypeScript');
 
@@ -85,10 +85,7 @@ export async function initialize() {
   }
 }
 function convertToTypeScript(rootDir: string, module: Module, runtime: Runtime, hasSrc: boolean) {
-  rootDir === "." ? path.basename(__dirname) : rootDir;
-  if (hasSrc) {
-    rootDir = path.join(process.cwd(), rootDir, 'src')
-  }
+  rootDir === "." ? path.basename(__dirname, hasSrc ? 'src' : '') : rootDir;
   const routesPath = path.join(rootDir, 'routes');
   const tsConfig = {
     compilerOptions: {
