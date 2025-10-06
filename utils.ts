@@ -40,14 +40,14 @@ export function generate(program: Command, app: string, view: ViewEngine[ "value
         flags = flags.concat(`${typeof entry[ 1 ] !== "boolean" ? `--${entry[ 0 ]}` : typeof entry[ 1 ] === "boolean" && entry[ 1 ] ? `--${entry[ 0 ]}` : ""} ${typeof entry[ 1 ] !== "boolean" ? entry[ 1 ] : ""}`).trim().concat(' ');
       })
 
-      const cd = path.join(__dirname, app);
+      const targetPath = makeSrc ? path.join(__dirname, app, 'src') : path.join(__dirname, app);
       const extRuntime = runtime === "node" ? 'npx' : 'bunx';
 
       execSync(`${extRuntime} express-generator@latest ${makeSrc ? app + '/src' : app} ${flags} ${force ? ' --force' : ''}`)
       spinner.succeed('Generated base express project');
 
       spinner.start('Converting to TypeScript...');
-      convertToTypeScript(app, module, runtime, makeSrc);
+      convertToTypeScript(targetPath, module, runtime, makeSrc);
 
       if (makeSrc) {
         const filesToMove = [ 'package.json', 'tsconfig.json', '.gitignore' ];
@@ -56,12 +56,12 @@ export function generate(program: Command, app: string, view: ViewEngine[ "value
         })
       }
 
-      const rootDir = makeSrc ? path.join(app, 'src') : path.join(__dirname, app);
+      const rootDir = makeSrc ? path.join(__dirname, app, 'src') : path.join(__dirname, app);
       checkStatements(rootDir, module);
       spinner.succeed('Converted to TypeScript');
 
       spinner.start('Installing dependencies and types...');
-      execSync(`cd ${cd} && ${runtime === "node" ?
+      execSync(`cd ${targetPath} && ${runtime === "node" ?
         `npm install && npm install tsx typescript copyfiles @types/node @types/express @types/morgan @types/cookie-parser @types/debug --save-dev && ${forceAudit ? 'npm audit fix --force' : 'npm audit fix'}`
         : `bun install @types/node @types/express @types/morgan @types/cookie-parser @types/debug --save-dev && bun update --latest ${forceAudit ? '--force' : ''}`}`)
 
@@ -85,7 +85,6 @@ export async function initialize() {
   }
 }
 function convertToTypeScript(rootDir: string, module: Module, runtime: Runtime, hasSrc: boolean) {
-  rootDir === "." ? path.basename(__dirname, hasSrc ? 'src' : '') : rootDir;
   const routesPath = path.join(rootDir, 'routes');
   const tsConfig = {
     compilerOptions: {
@@ -108,9 +107,6 @@ function convertToTypeScript(rootDir: string, module: Module, runtime: Runtime, 
   }
   const tsConfigJSON = JSON.stringify(tsConfig, null, 2);
 
-  const srcExists = fs.existsSync(path.join(rootDir, 'src'));
-  rootDir = srcExists ? path.join(rootDir, 'src') : rootDir;
-  
   fs.renameSync(path.join(rootDir, 'app.js'), path.join(rootDir, 'app.ts'));
   fs.readdirSync(path.join(rootDir, 'routes')).forEach((file) => {
     if (file.endsWith('.js')) {
