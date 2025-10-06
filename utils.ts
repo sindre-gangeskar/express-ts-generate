@@ -8,7 +8,7 @@ import path from 'path';
 import ora from "ora";
 
 export function generate(program: Command, app: string, view: ViewEngine[ "value" ], gitInit: boolean, runtime: Runtime, forceAudit: boolean, module: Module) {
-  program.name('express-ts-generator').description('Generate TypeScript Express applications').version("1.0.0")
+  program.name('express-ts-generate').description('Generate TypeScript Express applications').version("1.0.9")
   program.argument('[app-name]', 'name of the application', app)
     .option('-v, --view [view]', 'select view engine', view)
     .option('--git [git]', 'setup a .gitignore file', gitInit)
@@ -64,7 +64,7 @@ export function generate(program: Command, app: string, view: ViewEngine[ "value
         `npm install && npm install tsx typescript copyfiles @types/node @types/express @types/morgan @types/cookie-parser @types/debug --save-dev && ${forceAudit ? 'npm audit fix --force' : 'npm audit fix'}`
         : `bun install @types/node @types/express @types/morgan @types/cookie-parser @types/debug --save-dev && bun update --latest ${forceAudit ? '--force' : ''}`}`)
 
-      spinner.succeed('Project is ready. Enjoy!');
+      spinner.succeed(`Project is ready!\n ${runtime == "node" ? '\ndev: npm run dev\nbuild: npm run build\nstart: npm start' : '\ndev: bun run dev\nstart: bun start'}`);
 
     })
   program.parse()
