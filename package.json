@@ -1,6 +1,6 @@
 {
   "name": "express-ts-generate",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "main": "dist/index.js",
   "bin": {
     "express-ts-generate": "dist/index.js"
