@@ -113,7 +113,7 @@ function convertToTypeScript(rootDir: string, module: Module, runtime: Runtime, 
 
   const srcExists = fs.existsSync(path.join(rootDir, 'src'));
   rootDir = srcExists ? path.join(rootDir, 'src') : rootDir;
-  console.log('ROOT DIR', rootDir);
+  
   fs.renameSync(path.join(rootDir, 'app.js'), path.join(rootDir, 'app.ts'));
   fs.readdirSync(path.join(rootDir, 'routes')).forEach((file) => {
     if (file.endsWith('.js')) {
