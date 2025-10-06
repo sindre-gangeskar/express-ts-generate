@@ -87,9 +87,9 @@ export async function initialize() {
 }
 function convertToTypeScript(rootDir: string, module: Module, runtime: Runtime, hasSrc: boolean) {
   if (hasSrc) {
-    rootDir = path.join(rootDir, 'src')
+    rootDir = path.join(process.cwd(), rootDir, 'src')
   }
-  if (rootDir === "." || rootDir == "") {
+  if (rootDir === "." || rootDir == "" || !rootDir) {
     rootDir = path.join(process.cwd(), rootDir);
   }
   const routesPath = path.join(rootDir, 'routes');
