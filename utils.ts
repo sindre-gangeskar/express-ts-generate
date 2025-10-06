@@ -146,8 +146,9 @@ function checkStatements(rootDir: string, module: Module) {
     }
 
     if (file.pathname === `${rootDir}\\bin\\www` && module === "esm") {
-      const appName = rootDir.includes('src') ? rootDir.split('\\')[ 1 ] : rootDir.split('\\')[ 0 ];
-      slicedData.splice(7, 1, `import debugModule from 'debug'\nconst debug = debugModule('${appName}:server')`);
+      const path = rootDir.split('\\');
+      const name = path[ path.length - 1 ];
+      slicedData.splice(7, 1, `import debugModule from 'debug'\nconst debug = debugModule('${name}:server')`);
     }
 
     const formatted = slicedData.join('\n');
