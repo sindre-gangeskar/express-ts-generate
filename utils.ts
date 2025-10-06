@@ -40,7 +40,7 @@ export function generate(program: Command, app: string, view: ViewEngine[ "value
         flags = flags.concat(`${typeof entry[ 1 ] !== "boolean" ? `--${entry[ 0 ]}` : typeof entry[ 1 ] === "boolean" && entry[ 1 ] ? `--${entry[ 0 ]}` : ""} ${typeof entry[ 1 ] !== "boolean" ? entry[ 1 ] : ""}`).trim().concat(' ');
       })
 
-      const targetPath = makeSrc ? path.join(__dirname, app, 'src') : path.join(__dirname, app);
+      const targetPath = makeSrc ? path.join(process.cwd(), app, 'src') : path.join(process.cwd(), app);
       const extRuntime = runtime === "node" ? 'npx' : 'bunx';
 
       execSync(`${extRuntime} express-generator@latest ${makeSrc ? app + '/src' : app} ${flags} ${force ? ' --force' : ''}`)
@@ -56,8 +56,7 @@ export function generate(program: Command, app: string, view: ViewEngine[ "value
         })
       }
 
-      const rootDir = makeSrc ? path.join(__dirname, app, 'src') : path.join(__dirname, app);
-      checkStatements(rootDir, module);
+      checkStatements(targetPath, module);
       spinner.succeed('Converted to TypeScript');
 
       spinner.start('Installing dependencies and types...');
