@@ -7,22 +7,21 @@ import fs from 'fs';
 import path from 'path';
 import ora from "ora";
 
-export function generate(program: Command, appname: string, view: ViewEngine[ "value" ], gitInit: boolean, runtime: Runtime, forceAudit: boolean, module: Module) {
+export function generate(program: Command, app: string, view: ViewEngine[ "value" ], gitInit: boolean, runtime: Runtime, forceAudit: boolean, module: Module) {
   program.name('express-ts-generator').description('Generate TypeScript Express applications').version("1.0.0")
-  program.argument('[app-name]', 'name of the application', appname)
+  program.argument('[app-name]', 'name of the application', app)
     .option('-v, --view [view]', 'select view engine', view)
     .option('--git [git]', 'setup a .gitignore file', gitInit)
     .action(async (app, options) => {
       let flags: string = "";
-      const appname = (app === "." || !app) ? process.cwd() : app;
       const entries = Object.entries(options);
 
-      const exists = fs.existsSync(path.join(app));
+      const exists = fs.existsSync(path.join(__dirname, app));
       let proceed = true;
       let force = false;
 
       if (exists) {
-        const dir = fs.readdirSync(app, { encoding: 'utf-8' });
+        const dir = fs.readdirSync(app ?? './', { encoding: 'utf-8' });
         if (dir.length > 0) {
           proceed = await confirm({ message: 'Directory is not empty.. proceed and force?' })
           force = proceed;
@@ -44,7 +43,7 @@ export function generate(program: Command, appname: string, view: ViewEngine[ "v
       const cd = `${app !== '.' ? `cd ${app}` : ''}`;
       const extRuntime = runtime === "node" ? 'npx' : 'bunx';
 
-      execSync(`${extRuntime} express-generator@latest ${makeSrc ? appname + '/src' : appname} ${flags} ${force ? ' --force' : ''}`)
+      execSync(`${extRuntime} express-generator@latest ${makeSrc ? app + '/src' : app} ${flags} ${force ? ' --force' : ''}`)
       spinner.succeed('Generated base express project');
 
       spinner.start('Converting to TypeScript...');
@@ -86,11 +85,9 @@ export async function initialize() {
   }
 }
 function convertToTypeScript(rootDir: string, module: Module, runtime: Runtime, hasSrc: boolean) {
+  rootDir === "." ? path.basename(__dirname) : rootDir;
   if (hasSrc) {
     rootDir = path.join(process.cwd(), rootDir, 'src')
-  }
-  if (rootDir === "." || rootDir == "" || !rootDir) {
-    rootDir = path.join(process.cwd(), rootDir);
   }
   const routesPath = path.join(rootDir, 'routes');
   const tsConfig = {
