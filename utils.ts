@@ -21,7 +21,7 @@ export function generate(program: Command, app: string, view: ViewEngine[ "value
       let force = false;
 
       if (exists) {
-        const dir = fs.readdirSync(app ?? './', { encoding: 'utf-8' });
+        const dir = fs.readdirSync(app, { encoding: 'utf-8' });
         if (dir.length > 0) {
           proceed = await confirm({ message: 'Directory is not empty.. proceed and force?' })
           force = proceed;
@@ -40,7 +40,7 @@ export function generate(program: Command, app: string, view: ViewEngine[ "value
         flags = flags.concat(`${typeof entry[ 1 ] !== "boolean" ? `--${entry[ 0 ]}` : typeof entry[ 1 ] === "boolean" && entry[ 1 ] ? `--${entry[ 0 ]}` : ""} ${typeof entry[ 1 ] !== "boolean" ? entry[ 1 ] : ""}`).trim().concat(' ');
       })
 
-      const cd = `${app !== '.' ? `cd ${app}` : ''}`;
+      const cd = path.join(__dirname, app);
       const extRuntime = runtime === "node" ? 'npx' : 'bunx';
 
       execSync(`${extRuntime} express-generator@latest ${makeSrc ? app + '/src' : app} ${flags} ${force ? ' --force' : ''}`)
@@ -61,7 +61,7 @@ export function generate(program: Command, app: string, view: ViewEngine[ "value
       spinner.succeed('Converted to TypeScript');
 
       spinner.start('Installing dependencies and types...');
-      execSync(`${cd} && ${runtime === "node" ?
+      execSync(`cd ${cd} && ${runtime === "node" ?
         `npm install && npm install tsx typescript copyfiles @types/node @types/express @types/morgan @types/cookie-parser @types/debug --save-dev && ${forceAudit ? 'npm audit fix --force' : 'npm audit fix'}`
         : `bun install @types/node @types/express @types/morgan @types/cookie-parser @types/debug --save-dev && bun update --latest ${forceAudit ? '--force' : ''}`}`)
 
