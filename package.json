@@ -22,5 +22,11 @@
     "typescript": "^5.9.3"
   },
   "license": "MIT",
-  "keywords": ["express-generator", "typescript", "express", "generator", "ts"]
+  "keywords": [
+    "express-generator",
+    "typescript",
+    "express",
+    "generator",
+    "ts"
+  ]
 }
