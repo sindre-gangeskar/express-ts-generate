@@ -1,6 +1,8 @@
 {
   "name": "express-ts-generate",
   "version": "1.0.9",
+  "homepage": "https://github.com/sindre-gangeskar/express-ts-generate",
+  "repository": "https://github.com/sindre-gangeskar/express-ts-generate",
   "main": "dist/index.js",
   "bin": {
     "express-ts-generate": "dist/index.js"
