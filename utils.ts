@@ -40,7 +40,7 @@ export function generate(program: Command, app: string, view: ViewEngine[ "value
         flags = flags.concat(`${typeof entry[ 1 ] !== "boolean" ? `--${entry[ 0 ]}` : typeof entry[ 1 ] === "boolean" && entry[ 1 ] ? `--${entry[ 0 ]}` : ""} ${typeof entry[ 1 ] !== "boolean" ? entry[ 1 ] : ""}`).trim().concat(' ');
       })
 
-      const targetPath = makeSrc ? path.join(process.cwd(), app, 'src') : path.join(process.cwd(), app);
+      const targetPath = makeSrc ? path.join(process.cwd(), app, 'src') : path.join(process.cwd(), app).normalize();
       const extRuntime = runtime === "node" ? 'npx' : 'bunx';
 
       execSync(`${extRuntime} express-generator@latest ${makeSrc ? app + '/src' : app} ${flags} ${force ? ' --force' : ''}`)
@@ -133,21 +133,21 @@ function checkStatements(rootDir: string, module: Module) {
   files.forEach(file => {
     const parsed = fs.readFileSync(file.pathname, 'utf-8');
     const appUseRegex = /(app\.use|router\.get)\((\'\/\'\, )? ?function\((err)?\,? ?(req)\, (res)\, (next)\) \{/gi;
+    const serverPath = path.join(rootDir, 'bin', 'www')
 
     let refactored = parsed.replace(appUseRegex, (_, p1, p2, p3, p4, p5, p6) => `${p1}(${p2 ?? ''}function(${p3 ? p3 + ": HttpError, " : ''}${p4}: Request, ${p5}: Response, ${p6}: NextFunction ) {`)
     const slicedData = refactored.split('\n');
 
-    if (file.pathname !== `${rootDir}\\bin\\www`)
+    if (file.pathname !== serverPath)
       slicedData.splice(0, 0, `import ${module === "commonjs" ? 'type' : ''} { Request, Response, NextFunction } from 'express'`)
 
-    if (file.pathname === `${rootDir}\\app.ts`) {
+    if (file.pathname === path.join(rootDir, 'app.ts')) {
       slicedData.splice(1, 0, `import ${module === "commonjs" ? 'type' : ''} { HttpError } from 'http-errors'`)
       slicedData.splice(7, 0, module === "esm" ? "import { fileURLToPath } from 'url'\nconst __filename = fileURLToPath(import.meta.url);\nconst __dirname = path.dirname(__filename);" : "");
     }
 
-    if (file.pathname === `${rootDir}\\bin\\www` && module === "esm") {
-      const path = rootDir.split('\\');
-      const name = path[ path.length - 1 ];
+    if (file.pathname === serverPath && module === "esm") {
+      const name = path.basename(rootDir);
       slicedData.splice(7, 1, `import debugModule from 'debug'\nconst debug = debugModule('${name}:server')`);
     }
 
