@@ -1,6 +1,6 @@
 {
   "name": "express-ts-generate",
-  "version": "1.0.10",
+  "version": "1.1.0",
   "homepage": "https://github.com/sindre-gangeskar/express-ts-generate",
   "repository": "https://github.com/sindre-gangeskar/express-ts-generate",
   "main": "dist/index.js",
