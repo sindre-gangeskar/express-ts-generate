@@ -120,7 +120,7 @@ function convertToTypeScript(rootDir: string, module: Module, runtime: Runtime, 
 
   module === "esm" ? packageData.type = "module" : null;
   packageData.scripts.start = `${runtime === "node" ? `tsx ${hasSrc ? './src/bin/www/' : './bin/www'}` : `bun ${hasSrc ? './src/bin/www' : './bin/www'}`}`;
-  packageData.scripts.dev = `${runtime === "node" ? `tsx watch ${hasSrc ? './src/bin/www' : './bin/www'}` : `bun ${hasSrc ? './src/bin/www' : './bin/www'} --watch`}`;
+  packageData.scripts.dev = `${runtime === "node" ? `tsx watch ${hasSrc ? './src/bin/www' : './bin/www'}` : `bun ${hasSrc ? '--watch ./src/bin/www' : '--watch ./bin/www'}`}`;
 
   if (runtime === "node")
     packageData.scripts.build = `tsc && copyfiles -a ${hasSrc ? '-u 1 ./src' : '.'}/views/**/* ${hasSrc ? './src' : '.'}/public/**/* ${hasSrc ? './src' : '.'}/bin/**/* ./dist`;
