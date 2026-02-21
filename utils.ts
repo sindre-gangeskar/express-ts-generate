@@ -7,8 +7,8 @@ import fs from 'fs';
 import path from 'path';
 import ora from "ora";
 
-export function generate(program: Command, app: string, view: ViewEngine[ "value" ], gitInit: boolean, runtime: Runtime, forceAudit: boolean, module: Module) {
-  program.name('express-ts-generate').description('Generate TypeScript Express applications').version("1.1.0")
+export function generate(program: Command, app: string, view: ViewEngine[ "value" ], gitInit: boolean, runtime: Runtime, forceAudit: boolean) {
+  program.name('express-ts-generate').description('Generate TypeScript Express applications').version("1.2.0")
   program.argument('[app-name]', 'name of the application', app)
     .option('-v, --view [view]', 'select view engine', view)
     .option('--git [git]', 'setup a .gitignore file', gitInit)
@@ -41,13 +41,13 @@ export function generate(program: Command, app: string, view: ViewEngine[ "value
       })
 
       const targetPath = makeSrc ? path.join(process.cwd(), app, 'src') : path.join(process.cwd(), app).normalize();
-      const extRuntime = runtime === "node" ? 'npx' : 'bunx';
+      const extRuntime = runtime === "node" ? 'npx' : 'bun x';
 
       execSync(`${extRuntime} express-generator@latest ${makeSrc ? app + '/src' : app} ${flags} ${force ? ' --force' : ''}`)
       spinner.succeed('Generated base express project');
 
       spinner.start('Converting to TypeScript...');
-      convertToTypeScript(targetPath, module, runtime, makeSrc);
+      convertToTypeScript(targetPath, runtime, makeSrc);
 
       if (makeSrc) {
         const filesToMove = [ 'package.json', 'tsconfig.json', '.gitignore' ];
@@ -56,7 +56,7 @@ export function generate(program: Command, app: string, view: ViewEngine[ "value
         })
       }
 
-      checkStatements(targetPath, module);
+      checkStatements(targetPath);
       spinner.succeed('Converted to TypeScript');
 
       spinner.start('Installing dependencies and types...');
@@ -73,22 +73,21 @@ export async function initialize() {
   try {
     const viewEngines: ViewEngine[] = [ { name: 'Embedded JavaScript', value: 'ejs' }, { name: 'Pug', value: 'pug' }, { name: 'None', value: 'none' } ];
     const appname = await input({ message: 'What is the name of the application?', default: 'express-ts', required: true });
-    const module = await select({ message: 'Select module type', choices: [ { name: 'CommonJS', value: 'commonjs' }, { name: 'ESM', value: 'esm' } ] })
     const view = await select({ message: 'Which view engine will you use?', choices: viewEngines })
     const gitInit = await confirm({ message: 'Initialize .gitignore?', default: true });
     const runtime = await select({ message: 'Which runtime environment will you use?', choices: [ { name: 'Node', value: 'node' }, { name: 'Bun', value: 'bun' } ] }) as Runtime;
     const forceAudit = await confirm({ message: 'Force audit fix for dependencies?' })
-    return { appname, view, gitInit, runtime, forceAudit, module }
+    return { appname, view, gitInit, runtime, forceAudit }
   } catch (error) {
     throw error;
   }
 }
-function convertToTypeScript(rootDir: string, module: Module, runtime: Runtime, hasSrc: boolean) {
+function convertToTypeScript(rootDir: string, runtime: Runtime, hasSrc: boolean) {
   const routesPath = path.join(rootDir, 'routes');
   const tsConfig = {
     compilerOptions: {
       baseUrl: '.',
-      module: module == "commonjs" ? 'commonjs' : 'esnext',
+      module: 'esnext',
       moduleResolution: 'node',
       incremental: true,
       target: "es5",
@@ -99,7 +98,7 @@ function convertToTypeScript(rootDir: string, module: Module, runtime: Runtime, 
       strict: true,
       noImplicitAny: false,
       resolveJsonModule: true,
-      ...(module === "esm" ? { allowSyntheticDefaultImports: true } : null),
+      allowSyntheticDefaultImports: true
     },
     include: [ hasSrc ? 'src' : '.' ],
     exclude: [ "node_modules", "dist" ]
@@ -118,7 +117,7 @@ function convertToTypeScript(rootDir: string, module: Module, runtime: Runtime, 
   const packageJSON = fs.readFileSync(path.join(rootDir, 'package.json'), 'utf-8');
   let packageData = JSON.parse(packageJSON);
 
-  module === "esm" ? packageData.type = "module" : null;
+  packageData.type = "module";
   packageData.scripts.start = `${runtime === "node" ? `tsx ${hasSrc ? './src/bin/www/' : './bin/www'}` : `bun ${hasSrc ? './src/bin/www' : './bin/www'}`}`;
   packageData.scripts.dev = `${runtime === "node" ? `tsx watch ${hasSrc ? './src/bin/www' : './bin/www'}` : `bun ${hasSrc ? '--watch ./src/bin/www' : '--watch ./bin/www'}`}`;
 
@@ -128,7 +127,7 @@ function convertToTypeScript(rootDir: string, module: Module, runtime: Runtime, 
   const editedJSON = JSON.stringify(packageData, null, 2);
   fs.writeFileSync(path.join(rootDir, 'package.json'), editedJSON);
 }
-function checkStatements(rootDir: string, module: Module) {
+function checkStatements(rootDir: string) {
   const files: { pathname: string }[] = [ { pathname: path.join(rootDir, 'app.ts') }, { pathname: path.join(rootDir, 'routes', 'index.ts') }, { pathname: path.join(rootDir, 'routes', 'users.ts') }, { pathname: path.join(rootDir, 'bin', 'www') } ];
   files.forEach(file => {
     const parsed = fs.readFileSync(file.pathname, 'utf-8');
@@ -139,20 +138,20 @@ function checkStatements(rootDir: string, module: Module) {
     const slicedData = refactored.split('\n');
 
     if (file.pathname !== serverPath)
-      slicedData.splice(0, 0, `import ${module === "commonjs" ? 'type' : ''} { Request, Response, NextFunction } from 'express'`)
+      slicedData.splice(0, 0, `import { Request, Response, NextFunction } from 'express'`)
 
     if (file.pathname === path.join(rootDir, 'app.ts')) {
-      slicedData.splice(1, 0, `import ${module === "commonjs" ? 'type' : ''} { HttpError } from 'http-errors'`)
-      slicedData.splice(7, 0, module === "esm" ? "import { fileURLToPath } from 'url'\nconst __filename = fileURLToPath(import.meta.url);\nconst __dirname = path.dirname(__filename);" : "");
+      slicedData.splice(1, 0, `import { HttpError } from 'http-errors'`)
+      slicedData.splice(7, 0, "import { fileURLToPath } from 'url'\nconst __filename = fileURLToPath(import.meta.url);\nconst __dirname = path.dirname(__filename);");
     }
 
-    if (file.pathname === serverPath && module === "esm") {
+    if (file.pathname === serverPath) {
       const name = path.basename(rootDir);
       slicedData.splice(7, 1, `import debugModule from 'debug'\nconst debug = debugModule('${name}:server')`);
     }
 
     const formatted = slicedData.join('\n');
-    let result = module === "esm" ? convertToImportStatements(formatted) : formatted;
+    let result = convertToImportStatements(formatted)
     fs.writeFileSync(file.pathname, result);
   })
 }
