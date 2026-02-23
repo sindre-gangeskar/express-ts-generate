@@ -8,7 +8,7 @@ import path from 'path';
 import ora from "ora";
 
 export function generate(program: Command, app: string, view: ViewEngine[ "value" ], gitInit: boolean, runtime: Runtime) {
-  program.name('express-ts-generate').description('Generate TypeScript Express applications').version("1.3.0")
+  program.name('express-ts-generate').description('Generate TypeScript Express applications').version("1.3.1")
   program.argument('[app-name]', 'name of the application', app)
     .option('-v, --view [view]', 'select view engine', view)
     .option('--git [git]', 'setup a .gitignore file', gitInit)
