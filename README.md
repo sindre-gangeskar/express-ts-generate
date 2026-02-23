@@ -15,7 +15,9 @@ run project with:
 - production: ```npm start``` or ```bun start```  
 
 ## Node build  
-When running the build command, a dist folder will be generated alongside the .js files converted from .ts. It will also include the basic included folders made by express-generator such as views and public.  Be sure to include any other additonal folder manually by editing build script in the package.json file. 
+When running the build script for transpiling, all files not excluded by the --ignore flag in the build script in your package.json file will be carried to the **dist** folder, even the static ones as it aims to create a complete copy of the project in vanilla js form.  
+  
+If there is an excessive amount of files you don't want to include in the dist folder when building - you can create a custom script to exclude files with the **tsc-esm-fix** package which is already included when using the node runtime.
 
 ### Note
-Dependencies and types are automatically installed during the generation process.
+It's recommended to audit dependencies after the process has finished as this package is using express-generator as a base, which follows the same dependencies it uses upon generation prior to being converted to a TypeScript equivalent project.

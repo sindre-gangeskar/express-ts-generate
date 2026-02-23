@@ -2,3 +2,4 @@
 tsconfig.json
 bun.lock
 types/
+_*
