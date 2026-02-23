@@ -1,14 +1,14 @@
 import { execSync } from "child_process";
 import { confirm, select, input } from "@inquirer/prompts";
 import { Command } from "commander";
-import { Runtime, ViewEngine, Module } from "types/types";
+import { Runtime, ViewEngine } from "types/types";
 
 import fs from 'fs';
 import path from 'path';
 import ora from "ora";
 
-export function generate(program: Command, app: string, view: ViewEngine[ "value" ], gitInit: boolean, runtime: Runtime, forceAudit: boolean) {
-  program.name('express-ts-generate').description('Generate TypeScript Express applications').version("1.2.0")
+export function generate(program: Command, app: string, view: ViewEngine[ "value" ], gitInit: boolean, runtime: Runtime) {
+  program.name('express-ts-generate').description('Generate TypeScript Express applications').version("1.3.0")
   program.argument('[app-name]', 'name of the application', app)
     .option('-v, --view [view]', 'select view engine', view)
     .option('--git [git]', 'setup a .gitignore file', gitInit)
@@ -40,7 +40,7 @@ export function generate(program: Command, app: string, view: ViewEngine[ "value
         flags = flags.concat(`${typeof entry[ 1 ] !== "boolean" ? `--${entry[ 0 ]}` : typeof entry[ 1 ] === "boolean" && entry[ 1 ] ? `--${entry[ 0 ]}` : ""} ${typeof entry[ 1 ] !== "boolean" ? entry[ 1 ] : ""}`).trim().concat(' ');
       })
 
-      const targetPath = makeSrc ? path.join(process.cwd(), app, 'src') : path.join(process.cwd(), app).normalize();
+      const targetPath = makeSrc ? path.join(process.cwd(), app, 'src').normalize() : path.join(process.cwd(), app).normalize();
       const extRuntime = runtime === "node" ? 'npx' : 'bun x';
 
       execSync(`${extRuntime} express-generator@latest ${makeSrc ? app + '/src' : app} ${flags} ${force ? ' --force' : ''}`)
@@ -61,10 +61,12 @@ export function generate(program: Command, app: string, view: ViewEngine[ "value
 
       spinner.start('Installing dependencies and types...');
       execSync(`cd ${targetPath} && ${runtime === "node" ?
-        `npm install && npm install tsx typescript copyfiles @types/node @types/express @types/morgan @types/cookie-parser @types/debug --save-dev && ${forceAudit ? 'npm audit fix --force' : 'npm audit fix'}`
-        : `bun install @types/node @types/express @types/morgan @types/cookie-parser @types/debug --save-dev && bun update --latest ${forceAudit ? '--force' : ''}`}`)
+        `npm install && npm install nodemon tsx typescript tsc-esm-fix @swc/cli @swc/core @types/node @types/express @types/morgan @types/cookie-parser @types/debug --save-dev`
+        : `bun install && bun add -d @types/node @types/express @types/morgan @types/cookie-parser @types/debug`
+        }`)
 
-      spinner.succeed(`Project is ready!\n ${runtime == "node" ? '\ndev: npm run dev\nbuild: npm run build\nstart: npm start' : '\ndev: bun run dev\nstart: bun start'}`);
+      spinner.succeed("Finished installing dependencies");
+      spinner.succeed(`Project is ready!\nAudit dependecies recommended\n ${runtime == "node" ? '\ndev: npm run dev\nbuild: npm run build\nstart: npm start' : '\ndev: bun run dev\nstart: bun start'}`);
 
     })
   program.parse()
@@ -76,29 +78,41 @@ export async function initialize() {
     const view = await select({ message: 'Which view engine will you use?', choices: viewEngines })
     const gitInit = await confirm({ message: 'Initialize .gitignore?', default: true });
     const runtime = await select({ message: 'Which runtime environment will you use?', choices: [ { name: 'Node', value: 'node' }, { name: 'Bun', value: 'bun' } ] }) as Runtime;
-    const forceAudit = await confirm({ message: 'Force audit fix for dependencies?' })
-    return { appname, view, gitInit, runtime, forceAudit }
+    return { appname, view, gitInit, runtime }
   } catch (error) {
     throw error;
   }
 }
 function convertToTypeScript(rootDir: string, runtime: Runtime, hasSrc: boolean) {
   const routesPath = path.join(rootDir, 'routes');
+
+  const nodeTsConfig = {
+    module: 'nodenext',
+    moduleResolution: 'nodenext',
+    incremental: true,
+    target: "esnext",
+    lib: [ "ESNext" ],
+    allowJs: true,
+    rootDir: hasSrc ? "src" : ".",
+    outDir: "dist",
+    strict: true,
+    noImplicitAny: false,
+  }
+  const bunTsConfig = {
+    module: 'esnext',
+    moduleResolution: "node",
+    target: "esnext",
+    lib: [ "ESNext" ],
+    strict: true,
+    noImplicitAny: false,
+  }
   const tsConfig = {
     compilerOptions: {
-      baseUrl: '.',
-      module: 'esnext',
-      moduleResolution: 'node',
-      incremental: true,
-      target: "es5",
-      lib: [ "ES6" ],
-      allowJs: true,
-      rootDir: hasSrc ? "src" : ".",
-      outDir: "dist",
-      strict: true,
-      noImplicitAny: false,
+      ...(runtime == "node" ? nodeTsConfig : bunTsConfig),
+      allowSyntheticDefaultImports: true,
+      allowImportingTsExtensions: true,
+      noEmit: true,
       resolveJsonModule: true,
-      allowSyntheticDefaultImports: true
     },
     include: [ hasSrc ? 'src' : '.' ],
     exclude: [ "node_modules", "dist" ]
@@ -113,16 +127,22 @@ function convertToTypeScript(rootDir: string, runtime: Runtime, hasSrc: boolean)
     }
   })
   fs.writeFileSync(path.join(rootDir, 'tsconfig.json'), tsConfigJSON);
-
+  
+  if (runtime == "node") {
+    const tsmFixScript = `import { fix } from 'tsc-esm-fix';
+await fix({ filenameVar: false, dirnameVar: false, target: "dist/**/*" })`;
+    fs.writeFileSync(path.join(rootDir, hasSrc ? '..' : '', 'tsc-esm-fix.js'), tsmFixScript, 'utf-8');
+  }
+  
   const packageJSON = fs.readFileSync(path.join(rootDir, 'package.json'), 'utf-8');
   let packageData = JSON.parse(packageJSON);
 
   packageData.type = "module";
-  packageData.scripts.start = `${runtime === "node" ? `tsx ${hasSrc ? './src/bin/www/' : './bin/www'}` : `bun ${hasSrc ? './src/bin/www' : './bin/www'}`}`;
-  packageData.scripts.dev = `${runtime === "node" ? `tsx watch ${hasSrc ? './src/bin/www' : './bin/www'}` : `bun ${hasSrc ? '--watch ./src/bin/www' : '--watch ./bin/www'}`}`;
+  packageData.scripts.start = `${runtime === "node" ? `node dist/bin/www` : `bun ${hasSrc ? 'src' : '.'}/bin/www`}`;
+  packageData.scripts.dev = `${runtime === "node" ? `tsx watch ${hasSrc ? 'src' : '.'}/bin/www` : `bun --watch ${hasSrc ? 'src' : '.'}/bin/www`}`;
 
   if (runtime === "node")
-    packageData.scripts.build = `tsc && copyfiles -a ${hasSrc ? '-u 1 ./src' : '.'}/views/**/* ${hasSrc ? './src' : '.'}/public/**/* ${hasSrc ? './src' : '.'}/bin/**/* ./dist`;
+    packageData.scripts.build = `swc ${hasSrc ? 'src ' : '. '}-d dist ${!hasSrc ? "--ignore node_modules,*.json,tsc-esm-fix.js" : "--strip-leading-paths"} --copy-files && node tsc-esm-fix.js`;
 
   const editedJSON = JSON.stringify(packageData, null, 2);
   fs.writeFileSync(path.join(rootDir, 'package.json'), editedJSON);
@@ -158,6 +178,19 @@ function checkStatements(rootDir: string) {
 function convertToImportStatements(parsed: string) {
   const requireRegex = /var (\w+) = require(\(\'[\.+\/+\w\:\-]+\'\))\;/gi
   const moduleExportsRegex = /module\.exports = (\w+)/gi;
-  return parsed.replace(requireRegex, (_, p1, p2) => `import ${p1} from ${p2.slice(1, -1)}`)
-    .replace(moduleExportsRegex, (_, p1) => `export default ${p1}`)
+  parsed = parsed.replace(requireRegex, (_, p1: string, p2: string) => {
+    let sliced = p2.slice(2, -2);
+    const extRegex = /^\.{1,2}\/[\w+\/]+$/;
+
+    if (extRegex.test(sliced))
+      sliced += ".ts";
+
+    return `import ${p1} from ${"'" + sliced + "'"}`
+  })
+
+  parsed = parsed.replace(moduleExportsRegex, (_, p1: string) => {
+    return `export default ${p1}`;
+  })
+
+  return parsed;
 }

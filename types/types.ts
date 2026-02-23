@@ -3,4 +3,3 @@ export interface ViewEngine {
   value: "ejs" | "pug" | "none"
 }
 export type Runtime = "node" | "bun"
-export type Module = "esm"
